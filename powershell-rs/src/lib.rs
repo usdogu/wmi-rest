@@ -1,4 +1,6 @@
 mod util;
+
+use deadpool::unmanaged::Pool;
 use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader},
@@ -9,7 +11,7 @@ use util::*;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 pub struct Shell {
-    handle: Child,
+    handle_pool: Pool<Child>,
 }
 
 #[derive(Debug, Error)]
@@ -24,21 +26,27 @@ enum PowerShellError {
 
 impl Shell {
     pub fn new() -> Self {
-        let handle = Command::new("powershell.exe")
-            .arg("-NoLogo")
-            .arg("-NoExit")
-            .arg("-Command")
-            .arg("-")
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-            .expect("Failed to start powershell.exe");
+        let handle_pool = Pool::<Child>::new(5);
+        for _ in 0..5 {
+            let handle = Command::new("powershell.exe")
+                .arg("-NoLogo")
+                .arg("-NoExit")
+                .arg("-Command")
+                .arg("-")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .expect("Failed to start powershell.exe");
+            handle_pool.try_add(handle).expect("Failed to add handle");
+        }
 
-        Self { handle }
+        Self { handle_pool }
     }
 
     pub async fn execute(&mut self, cmd: impl AsRef<str>) -> Result<(String, String)> {
+        let mut handle_obj = self.handle_pool.get().await?;
+        let handle = handle_obj.as_mut();
         let out_boundary = create_boundary();
         let err_boundary = create_boundary();
         let full = format!(
@@ -47,9 +55,9 @@ impl Shell {
             out_boundary,
             err_boundary
         );
-        let stdin = self.handle.stdin.as_mut().ok_or(PowerShellError::Stdin)?;
-        let stdout = self.handle.stdout.as_mut().ok_or(PowerShellError::Stdout)?;
-        let stderr = self.handle.stderr.as_mut().ok_or(PowerShellError::Stderr)?;
+        let stdin = handle.stdin.as_mut().ok_or(PowerShellError::Stdin)?;
+        let stdout = handle.stdout.as_mut().ok_or(PowerShellError::Stdout)?;
+        let stderr = handle.stderr.as_mut().ok_or(PowerShellError::Stderr)?;
         stdin.write_all(full.as_bytes()).await?;
         let res = tokio::try_join!(
             read_streaming(stdout, &out_boundary),
