@@ -3,15 +3,14 @@ pub fn get_memory(machine_id: impl AsRef<str>, pwsh: &mut powershell_rs::Shell) 
     if machine_id.is_empty() {
         Ok("No VM ID specified".into())
     } else if machine_id == "all" {
-        // FIXME: bellek -> memory
-        let (sout, serr) = pwsh.execute(r#"Get-WmiObject -Namespace 'root\virtualization\v2' -Class Msvm_MemorySettingData -Filter "Caption like 'Bellek'" | Select-Object -Property InstanceID, VirtualQuantity | ConvertTo-Json"#)?;
+        let (sout, serr) = pwsh.execute(r#"Get-WmiObject -Namespace 'root\virtualization\v2' -Class Msvm_MemorySettingData -Filter "Caption like 'Memory'" | Select-Object -Property InstanceID, VirtualQuantity | ConvertTo-Json"#)?;
         if !serr.is_empty() {
             Err(serr.into())
         } else {
             Ok(sout)
         }
     } else {
-        let (sout, serr) = pwsh.execute(format!("Get-VM -Id {} | Get-VMMemory | Select-Object -Property InstanceID, VirtualQuantity | ConvertTo-Json", machine_id))?;
+        let (sout, serr) = pwsh.execute(format!("Get-VM -Id {machine_id} | Get-VMMemory | Select-Object -Property InstanceID, VirtualQuantity | ConvertTo-Json"))?;
         if !serr.is_empty() {
             Err(serr.into())
         } else {

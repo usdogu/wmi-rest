@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::{Arc, Mutex}};
 
-use axum::{extract::State, routing::get, Router};
+use axum::{extract::{State, Path}, routing::get, Router};
 use tokio::signal;
 
 struct AppState {
@@ -18,7 +18,12 @@ impl AppState {
 #[tokio::main]
 async fn main() {
     let state = Arc::new(Mutex::new(AppState::new()));
-    let app = Router::new().route("/vms", get(get_vms)).with_state(state);
+    let app = Router::new()
+    .route("/vms", get(get_vms))
+    .route("/vms/:id/memory", get(get_memory))
+    .route("/vms/:id/network", get(get_network))
+    .route("/vms/:id/processor", get(get_processor))
+    .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -33,6 +38,23 @@ async fn get_vms(State(state): State<Arc<Mutex<AppState>>>) -> String {
     vms
 }
 
+async fn get_memory(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+    let pwsh = &mut state.lock().unwrap().pwsh;
+    let memory = hyperv::memory::get_memory(id, pwsh).unwrap();
+    memory
+}
+
+async fn get_processor(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+    let pwsh = &mut state.lock().unwrap().pwsh;
+    let processor = hyperv::processor::get_processor(id, pwsh).unwrap();
+    processor
+}
+
+async fn get_network(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+    let pwsh = &mut state.lock().unwrap().pwsh;
+    let network = hyperv::network::get_network(id, pwsh).unwrap();
+    network
+}
 
 async fn shutdown_signal() {
     let ctrl_c = async {
