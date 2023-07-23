@@ -315,6 +315,7 @@ dependencies = [
 name = "hyperv"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "powershell-rs",
  "serde",
  "serde_json",
@@ -474,9 +475,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 name = "powershell-rs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "deadpool",
  "rand",
- "thiserror",
  "tokio",
 ]
 
@@ -705,26 +706,6 @@ name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
-
-[[package]]
-name = "thiserror"
-version = "1.0.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "611040a08a0439f8248d1990b111c95baa9c704c805fa1f62104b39655fd7f90"
-dependencies = [
- "thiserror-impl",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090198534930841fab3a5d1bb637cde49e339654e606195f8d9c76eeb081dc96"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "thread_local"

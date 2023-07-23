@@ -1,27 +1,15 @@
 mod util;
 
 use deadpool::unmanaged::Pool;
-use thiserror::Error;
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader},
     process::{Child, Command},
 };
 use util::*;
-
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+use anyhow::{Result, Context};
 
 pub struct Shell {
     handle_pool: Pool<Child>,
-}
-
-#[derive(Debug, Error)]
-enum PowerShellError {
-    #[error("failed to get stdin")]
-    Stdin,
-    #[error("failed to get stdout")]
-    Stdout,
-    #[error("failed to get stderr")]
-    Stderr,
 }
 
 impl Shell {
@@ -55,9 +43,9 @@ impl Shell {
             out_boundary,
             err_boundary
         );
-        let stdin = handle.stdin.as_mut().ok_or(PowerShellError::Stdin)?;
-        let stdout = handle.stdout.as_mut().ok_or(PowerShellError::Stdout)?;
-        let stderr = handle.stderr.as_mut().ok_or(PowerShellError::Stderr)?;
+        let stdin = handle.stdin.as_mut().context("Failed to get stdin")?;
+        let stdout = handle.stdout.as_mut().context("Failed to get stdout")?;
+        let stderr = handle.stderr.as_mut().context("Failed to get stderr")?;
         stdin.write_all(full.as_bytes()).await?;
         let res = tokio::try_join!(
             read_streaming(stdout, &out_boundary),
