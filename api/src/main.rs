@@ -3,11 +3,12 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{
     extract::{Path, State},
     routing::get,
-    Router,
+    Router, response::IntoResponse, http::StatusCode, Json,
 };
 use tokio::{signal, sync::Mutex};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use serde_json::{json, Value, from_str};
 
 struct AppState {
     pwsh: powershell_rs::Shell,
@@ -18,6 +19,26 @@ impl AppState {
         Self {
             pwsh: powershell_rs::Shell::new(),
         }
+    }
+}
+
+struct AppError(anyhow::Error);
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": self.0.to_string() })),
+        ).into_response()
+    }
+}
+
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
     }
 }
 
@@ -48,37 +69,37 @@ async fn main() {
         .unwrap();
 }
 
-async fn get_vms(State(state): State<Arc<Mutex<AppState>>>) -> String {
+async fn get_vms(State(state): State<Arc<Mutex<AppState>>>) -> Result<Json<Value>, AppError> {
     let pwsh = &mut state.lock().await.pwsh;
     let vms = hyperv::vm::get_vms(pwsh).await.unwrap();
-    vms
+    Ok(Json(from_str(&vms)?))
 }
 
-async fn get_memory(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+async fn get_memory(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> Result<Json<Value>, AppError> {
     let pwsh = &mut state.lock().await.pwsh;
     let memory = hyperv::memory::get_memory(id, pwsh).await.unwrap();
-    memory
+    Ok(Json(from_str(&memory)?))
 }
 
 async fn get_processor(
     State(state): State<Arc<Mutex<AppState>>>,
     Path(id): Path<String>,
-) -> String {
+) -> Result<Json<Value>, AppError> {
     let pwsh = &mut state.lock().await.pwsh;
     let processor = hyperv::processor::get_processor(id, pwsh).await.unwrap();
-    processor
+    Ok(Json(from_str(&processor)?))
 }
 
-async fn get_network(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+async fn get_network(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> Result<Json<Value>, AppError> {
     let pwsh = &mut state.lock().await.pwsh;
     let network = hyperv::network::get_network(id, pwsh).await.unwrap();
-    network
+    Ok(Json(from_str(&network)?))
 }
 
-async fn get_vhd(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+async fn get_vhd(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> Result<Json<Value>, AppError> {
     let pwsh = &mut state.lock().await.pwsh;
     let vhd = hyperv::vhd::get_vhd(id, pwsh).await.unwrap();
-    vhd
+    Ok(Json(from_str(&vhd)?))
 }
 
 async fn shutdown_signal() {
