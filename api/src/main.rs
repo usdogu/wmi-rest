@@ -1,7 +1,16 @@
-use std::{net::SocketAddr, sync::{Arc, Mutex}};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 
-use axum::{extract::{State, Path}, routing::get, Router};
+use axum::{
+    extract::{Path, State},
+    routing::get,
+    Router,
+};
 use tokio::signal;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 struct AppState {
     pwsh: powershell_rs::Shell,
@@ -17,13 +26,22 @@ impl AppState {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "api=debug,tower_http=debug,axum::rejection=trace".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let state = Arc::new(Mutex::new(AppState::new()));
     let app = Router::new()
-    .route("/vms", get(get_vms))
-    .route("/vms/:id/memory", get(get_memory))
-    .route("/vms/:id/network", get(get_network))
-    .route("/vms/:id/processor", get(get_processor))
-    .with_state(state);
+        .route("/vms", get(get_vms))
+        .route("/vms/:id/memory", get(get_memory))
+        .route("/vms/:id/network", get(get_network))
+        .route("/vms/:id/processor", get(get_processor))
+        .with_state(state)
+        .layer(TraceLayer::new_for_http());
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -44,7 +62,10 @@ async fn get_memory(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<St
     memory
 }
 
-async fn get_processor(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+async fn get_processor(
+    State(state): State<Arc<Mutex<AppState>>>,
+    Path(id): Path<String>,
+) -> String {
     let pwsh = &mut state.lock().unwrap().pwsh;
     let processor = hyperv::processor::get_processor(id, pwsh).unwrap();
     processor

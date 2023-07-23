@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.6.19"
+axum = { version = "0.6.19", features = ["tracing"] }
 tokio = { version = "1.29.1", features = ["rt-multi-thread", "macros", "signal"] }
 powershell-rs = { path = "../powershell-rs"}
 hyperv = { path = "../hyperv" }
+tower-http = { version = "0.4.3", features = ["trace"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
