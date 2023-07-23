@@ -1,6 +1,6 @@
 use std::{
     net::SocketAddr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use axum::{
@@ -8,7 +8,7 @@ use axum::{
     routing::get,
     Router,
 };
-use tokio::signal;
+use tokio::{signal, sync::Mutex};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -52,14 +52,14 @@ async fn main() {
 }
 
 async fn get_vms(State(state): State<Arc<Mutex<AppState>>>) -> String {
-    let pwsh = &mut state.lock().unwrap().pwsh;
-    let vms = hyperv::vm::get_vms(pwsh).unwrap();
+    let pwsh = &mut state.lock().await.pwsh;
+    let vms = hyperv::vm::get_vms(pwsh).await.unwrap();
     vms
 }
 
 async fn get_memory(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
-    let pwsh = &mut state.lock().unwrap().pwsh;
-    let memory = hyperv::memory::get_memory(id, pwsh).unwrap();
+    let pwsh = &mut state.lock().await.pwsh;
+    let memory = hyperv::memory::get_memory(id, pwsh).await.unwrap();
     memory
 }
 
@@ -67,20 +67,20 @@ async fn get_processor(
     State(state): State<Arc<Mutex<AppState>>>,
     Path(id): Path<String>,
 ) -> String {
-    let pwsh = &mut state.lock().unwrap().pwsh;
-    let processor = hyperv::processor::get_processor(id, pwsh).unwrap();
+    let pwsh = &mut state.lock().await.pwsh;
+    let processor = hyperv::processor::get_processor(id, pwsh).await.unwrap();
     processor
 }
 
 async fn get_network(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
-    let pwsh = &mut state.lock().unwrap().pwsh;
-    let network = hyperv::network::get_network(id, pwsh).unwrap();
+    let pwsh = &mut state.lock().await.pwsh;
+    let network = hyperv::network::get_network(id, pwsh).await.unwrap();
     network
 }
 
 async fn get_vhd(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
-    let pwsh = &mut state.lock().unwrap().pwsh;
-    let vhd = hyperv::vhd::get_vhd(id, pwsh).unwrap();
+    let pwsh = &mut state.lock().await.pwsh;
+    let vhd = hyperv::vhd::get_vhd(id, pwsh).await.unwrap();
     vhd
 }
 
