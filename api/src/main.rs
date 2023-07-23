@@ -40,6 +40,7 @@ async fn main() {
         .route("/vms/:id/memory", get(get_memory))
         .route("/vms/:id/network", get(get_network))
         .route("/vms/:id/processor", get(get_processor))
+        .route("/vms/:id/vhd", get(get_vhd))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -75,6 +76,12 @@ async fn get_network(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<S
     let pwsh = &mut state.lock().unwrap().pwsh;
     let network = hyperv::network::get_network(id, pwsh).unwrap();
     network
+}
+
+async fn get_vhd(State(state): State<Arc<Mutex<AppState>>>, Path(id): Path<String>) -> String {
+    let pwsh = &mut state.lock().unwrap().pwsh;
+    let vhd = hyperv::vhd::get_vhd(id, pwsh).unwrap();
+    vhd
 }
 
 async fn shutdown_signal() {
