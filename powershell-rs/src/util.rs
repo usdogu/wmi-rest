@@ -1,4 +1,4 @@
-use rand::{thread_rng, Rng, distributions::Alphanumeric};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 pub(crate) fn create_boundary() -> String {
     let rand_str = thread_rng()
         .sample_iter(&Alphanumeric)

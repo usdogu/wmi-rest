@@ -11,7 +11,11 @@ pub async fn get_processor(machine_id: impl AsRef<str>, pwsh: &mut powershell_rs
         }
         return Ok(sout);
     }
-    let (sout, serr) = pwsh.execute(format!("Get-VM -Id {machine_id} | Get-VMProcessor | ConvertTo-Json")).await?;
+    let (sout, serr) = pwsh
+        .execute(format!(
+            "Get-VM -Id {machine_id} | Get-VMProcessor | ConvertTo-Json"
+        ))
+        .await?;
     if !serr.is_empty() {
         return Err(serr.into());
     }

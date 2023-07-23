@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::Result;
+use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 struct VHDPathElement {
     #[serde(rename = "Path")]
@@ -13,7 +13,7 @@ struct VHDPathElement {
 struct VHDInfo {
     size: u64,
     #[serde(default)]
-    id: String
+    id: String,
 }
 
 pub async fn get_vhd(machine_id: impl AsRef<str>, pwsh: &mut powershell_rs::Shell) -> Result {
@@ -29,13 +29,22 @@ pub async fn get_vhd(machine_id: impl AsRef<str>, pwsh: &mut powershell_rs::Shel
 
 async fn get_all_vhd_info(pwsh: &mut powershell_rs::Shell) -> Result {
     let mut size_list = vec![];
-    let (sout, serr) = pwsh.execute(r#"Get-VM | Get-VMHardDiskDrive | Select-Object -Property Path, VMId | ConvertTo-Json"#).await?;
+    let (sout, serr) = pwsh
+        .execute(
+            r#"Get-VM | Get-VMHardDiskDrive | Select-Object -Property Path, VMId | ConvertTo-Json"#,
+        )
+        .await?;
     if !serr.is_empty() {
         return Err(serr.into());
     }
     let vhd_path = serde_json::from_str::<Vec<VHDPathElement>>(&sout)?;
     for path in vhd_path {
-        let (sout, serr) = pwsh.execute(format!(r#"Get-VHD -Path "{}" | Select-Object -Property Size | ConvertTo-Json"#, path.path)).await?;
+        let (sout, serr) = pwsh
+            .execute(format!(
+                r#"Get-VHD -Path "{}" | Select-Object -Property Size | ConvertTo-Json"#,
+                path.path
+            ))
+            .await?;
         if !serr.is_empty() {
             return Err(serr.into());
         }
@@ -47,7 +56,9 @@ async fn get_all_vhd_info(pwsh: &mut powershell_rs::Shell) -> Result {
 }
 
 async fn get_vhd_info(machine_id: &str, pwsh: &mut powershell_rs::Shell) -> Result {
-    let (sout, serr) = pwsh.execute(format!(r#"Get-VHD -Id "{machine_id}" | ConvertTo-Json"#)).await?;
+    let (sout, serr) = pwsh
+        .execute(format!(r#"Get-VHD -Id "{machine_id}" | ConvertTo-Json"#))
+        .await?;
     if !serr.is_empty() {
         return Err(serr.into());
     }
