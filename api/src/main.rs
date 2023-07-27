@@ -5,11 +5,12 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::get,
-    Json, Router,
+    Json, Router, ServiceExt,
 };
 use serde_json::{from_str, json, Value};
 use tokio::{signal, sync::Mutex};
-use tower_http::trace::TraceLayer;
+use tower_http::{normalize_path::NormalizePathLayer, trace::TraceLayer};
+use tower_layer::Layer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 struct AppState {
@@ -64,9 +65,12 @@ async fn main() {
         .route("/vms/:id/vhd", get(get_vhd))
         .with_state(state)
         .layer(TraceLayer::new_for_http());
+
+    let app_with_normalize_path = NormalizePathLayer::trim_trailing_slash().layer(app);
+
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app_with_normalize_path.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
